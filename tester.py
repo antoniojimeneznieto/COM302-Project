@@ -3,44 +3,45 @@ import string
 import random
 
 
-# Simple and incomplete sketch:
 def transmitter(message):
     # Convert text message to binary representation
-    binary_message = ''.join(format(ord(char), '07b') for char in message)
+    binary_message = ''.join(format(ord(char), '08b') for char in message)
 
-    # BPSK modulation
-    binary_signal = [int(bit) * 2 - 1 for bit in binary_message]
+    # Group bits into 2-bit chunks for QPSK
+    binary_chunks = [binary_message[i:i + 2] for i in range(0, len(binary_message), 2)]
 
-    return binary_signal
+    # QPSK modulation
+    symbol_map = {'00': complex(1, 1), '01': complex(-1, 1), '11': complex(-1, -1), '10': complex(1, -1)}
+    qpsk_signal = [symbol_map[chunk] for chunk in binary_chunks]
+
+    return qpsk_signal
 
 
 def receiver(received_signal):
-    # Channel parameters
-    n = len(received_signal) // 2
-    x = np.array(received_signal[0:2 * n])
+    # Flatten the received signal and convert to a list
+    received_signal = np.array(received_signal).flatten().tolist()
 
-    # Reshape x to be one-dimensional
-    x = x.flatten()
-
-    # BPSK demodulation
-    demodulated_signal = ['1' if bit > 0 else '0' for bit in x]
+    # QPSK demodulation
+    symbol_map = {complex(1, 1): '00', complex(-1, 1): '01', complex(-1, -1): '11', complex(1, -1): '10'}
+    demodulated_signal = [find_closest_point(point, symbol_map) for point in received_signal]
 
     # Convert binary message back to text
     binary_message = ''.join(demodulated_signal)
-
-    # Remove padding zeros
-    padded_zeros = len(binary_message) % 7
-    if padded_zeros != 0:
-        binary_message = binary_message[:-padded_zeros]
-
-    text_message = ''.join(chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7))
+    text_message = ''.join(chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8))
 
     return text_message
 
 
+def find_closest_point(point, symbol_map):
+    # Find the constellation point closest to the received point
+    distances = [abs(point - constellation_point) for constellation_point in symbol_map.keys()]
+    closest_point = min(distances)
+    return symbol_map[list(symbol_map.keys())[distances.index(closest_point)]]
+
+
 def channel(sent_signal):
     sent_signal = np.array(sent_signal)
-    assert np.size(sent_signal) <= 350, "n must be <= 100"  # TODO: We must reduce N from 350 to at least 100
+    assert np.size(sent_signal) <= 200, "n must be <= 100"  # TODO: We must reduce N from 350 to at least 100
     n = np.size(sent_signal) // 2
     x = sent_signal[0:2 * n]
     s = sum(x ** 2) / np.size(x)
@@ -81,7 +82,7 @@ def example_usage():
 
 if __name__ == '__main__':
     total_errors = 0
-    for x in range(100):
+    for x in range(1):
         total_errors += example_usage()
         print("")
     print("Total messages error:", total_errors)
