@@ -1,32 +1,46 @@
 import numpy as np
+import string
+import random
 
 
 # Simple and incomplete sketch:
-def text_to_bits(text):
-    bits = bin(int.from_bytes(text.encode(), 'big'))[2:]
-    return list(map(int, bits.zfill(8 * ((len(bits) + 7) // 8))))
+def transmitter(message):
+    # Convert text message to binary representation
+    binary_message = ''.join(format(ord(char), '07b') for char in message)
+
+    # BPSK modulation
+    binary_signal = [int(bit) * 2 - 1 for bit in binary_message]
+
+    return binary_signal
 
 
-def bits_to_text(bits):
-    n = int(''.join(map(str, bits)), 2)
-    return n.to_bytes((n.bit_length() + 7) // 8, 'big').decode()
+def receiver(received_signal):
+    # Channel parameters
+    n = len(received_signal) // 2
+    x = np.array(received_signal[0:2 * n])
 
+    # Reshape x to be one-dimensional
+    x = x.flatten()
 
-def transmitter(text):  # TODO: Add error-detection and coding and modulation
-    bits = text_to_bits(text)
-    samples = [1 if bit == 1 else -1 for bit in bits]
-    return np.array(samples)
+    # BPSK demodulation
+    demodulated_signal = ['1' if bit > 0 else '0' for bit in x]
 
+    # Convert binary message back to text
+    binary_message = ''.join(demodulated_signal)
 
-def receiver(y):  # TODO: Add decoding and demodulation
-    bits = [1 if sample >= 0 else 0 for sample in y]
-    text = bits_to_text(bits)
-    return text
+    # Remove padding zeros
+    padded_zeros = len(binary_message) % 7
+    if padded_zeros != 0:
+        binary_message = binary_message[:-padded_zeros]
+
+    text_message = ''.join(chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7))
+
+    return text_message
 
 
 def channel(sent_signal):
     sent_signal = np.array(sent_signal)
-    assert np.size(sent_signal) <= 200, "n must be <= 100"
+    assert np.size(sent_signal) <= 350, "n must be <= 100"  # TODO: We must reduce N from 350 to at least 100
     n = np.size(sent_signal) // 2
     x = sent_signal[0:2 * n]
     s = sum(x ** 2) / np.size(x)
@@ -40,11 +54,34 @@ def channel(sent_signal):
     return Y
 
 
-if __name__ == '__main__':
-    # Example usage:
-    text = 'Hello, World!'
-    X = transmitter(text)  # Encode our message
-    Y = channel(X)  # Simulate the treatment done by the channel
-    received_text = receiver(Y)  # Decode the message received by the channel
+def generate_random_string(length):
+    # All ASCII characters
+    ascii_characters = string.ascii_letters + string.digits + string.punctuation
+    # Generate the random string
+    random_string = ''.join(random.choice(ascii_characters) for _ in range(length))
+    return random_string
 
-    print(received_text)  # It should decode the original text
+
+def example_usage():
+    # Example usage:
+    message = generate_random_string(50)
+
+    X = transmitter(message)  # Encode our message
+    Y = channel(X)  # Simulate the treatment done by the channel
+    reconstructed_message = receiver(Y)  # Decode the message received by the channel
+
+    pos = reconstructed_message.find(message[0])
+    reconstructed_message = reconstructed_message[pos: pos + len(message)]
+
+    print("Original message:", message)
+    print("Reconstructed message:", reconstructed_message)
+
+    return message != reconstructed_message
+
+
+if __name__ == '__main__':
+    total_errors = 0
+    for x in range(100):
+        total_errors += example_usage()
+        print("")
+    print("Total messages error:", total_errors)
