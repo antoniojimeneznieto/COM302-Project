@@ -6,6 +6,7 @@ import random
 def transmitter(message):
     # Convert text message to binary representation
     binary_message = ''.join(format(ord(char), '08b') for char in message)
+    print("[TRANSMITTER] binary message:", binary_message)
 
     # Group bits into 4-bit chunks for 16-QAM
     binary_chunks = [binary_message[i:i + 4] for i in range(0, len(binary_message), 4)]
@@ -17,7 +18,14 @@ def transmitter(message):
                   '1100': complex(-1, -1), '1101': complex(-1, -3), '1110': complex(-3, -1), '1111': complex(-3, -3)}
     qam_signal = [symbol_map[chunk] for chunk in binary_chunks]
 
-    return qam_signal
+    # Separate the real and imaginary parts of the QAM signal
+    signal_parts = [(sample.real, sample.imag) for sample in qam_signal]
+
+    # Flatten the list of tuples into a single list
+    flat_signal = [part for sample in signal_parts for part in sample]
+
+    print("[TRANSMITTER] QAM signal:", flat_signal)
+    return flat_signal
 
 
 def receiver(received_signal):
@@ -27,18 +35,25 @@ def receiver(received_signal):
         closest_point = min(distances)
         return symbol_map[list(symbol_map.keys())[distances.index(closest_point)]]
 
-    # Flatten the received signal and convert to a list
-    received_signal = np.array(received_signal).flatten().tolist()
+    # We take only the first sublist ?? Why not other ??
+    received_signal = np.array(received_signal)[0]
+    print("[RECEIVER] received signal:", received_signal)
+
+    qam_signal = [complex(received_signal[i], received_signal[i + 1]) for i in range(0, len(received_signal), 2)]
+
+    print("[RECEIVER] received signal QAM:", qam_signal)
 
     # 16-QAM demodulation
     symbol_map = {complex(1, 1): '0000', complex(1, 3): '0001', complex(3, 1): '0010', complex(3, 3): '0011',
                   complex(-1, 1): '0100', complex(-1, 3): '0101', complex(-3, 1): '0110', complex(-3, 3): '0111',
                   complex(1, -1): '1000', complex(1, -3): '1001', complex(3, -1): '1010', complex(3, -3): '1011',
                   complex(-1, -1): '1100', complex(-1, -3): '1101', complex(-3, -1): '1110', complex(-3, -3): '1111'}
-    demodulated_signal = [find_closest_point(point, symbol_map) for point in received_signal]
+
+    demodulated_signal = [find_closest_point(point, symbol_map) for point in qam_signal]
 
     # Convert binary message back to text
     binary_message = ''.join(demodulated_signal)
+    print("[RECEIVER] binary received signal demodulated:", binary_message)
     text_message = ''.join(chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8))
 
     return text_message
@@ -75,9 +90,6 @@ def example_usage():
     X = transmitter(message)  # Encode our message
     Y = channel(X)  # Simulate the treatment done by the channel
     reconstructed_message = receiver(Y)  # Decode the message received by the channel
-
-    pos = reconstructed_message.find(message[0])
-    # reconstructed_message = reconstructed_message[pos: pos + len(message)]
 
     print("Original message:", message)
     print("Reconstructed message:", reconstructed_message)
@@ -116,11 +128,12 @@ def receive_message_from_file(filename):
 
 
 if __name__ == '__main__':
-    message = "Hello World"
-    message = transmitter(message)
-    save_transmitted_signal_to_file(message, "input.txt")
-
-    receive_message_from_file("output.txt")
+    # message = "Hello World"
+    # message = transmitter(message)
+    #
+    # save_transmitted_signal_to_file(message, "input.txt")
+    #
+    # receive_message_from_file("output.txt")
 
 
     total_errors = 0
