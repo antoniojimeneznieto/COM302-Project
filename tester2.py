@@ -38,8 +38,18 @@ def receiver(received_signal):
     # We take only the first sublist ?? Why not other ??
     received_signal = np.array(received_signal)[0]
     print("[RECEIVER] received signal:", received_signal)
+    print("[RECEIVER] received signal size:", len(received_signal))
 
-    qam_signal = [complex(received_signal[i], received_signal[i + 1]) for i in range(0, len(received_signal), 2)]
+    reshaped_received_signal = received_signal.reshape(-1, 2)
+
+    # Apply the inverse of the channel matrix to the received signal
+    A_inv = np.linalg.inv(np.array([[11, 10], [10, 11]]))
+    equalized_signal = np.dot(reshaped_received_signal, A_inv)
+    print("[RECEIVER] received signal:", equalized_signal)
+
+    equalized_signal = equalized_signal.flatten()
+
+    qam_signal = [complex(equalized_signal[i], equalized_signal[i + 1]) for i in range(0, len(equalized_signal), 2)]
 
     print("[RECEIVER] received signal QAM:", qam_signal)
 
@@ -60,6 +70,7 @@ def receiver(received_signal):
 
 
 def channel(sent_signal):
+    # print("[CHANNEL] sent signal SIZE:", len(sent_signal))
     sent_signal = np.array(sent_signal)
     assert np.size(sent_signal) <= 200, "n must be <= 100"
     n = np.size(sent_signal) // 2
@@ -72,6 +83,8 @@ def channel(sent_signal):
     A = np.array([[11, 10], [10, 11]])
     B = np.kron(np.eye(n), A)
     Y = B.dot(x) + Z
+    # print("[CHANNEL noised signal:", Y)
+    # print("[CHANNEL] noised signal SIZE:", len(Y))
     return Y
 
 
@@ -85,7 +98,6 @@ def example_usage():
 
     # Example usage:
     message = generate_random_string(50)
-    message = "hello"
 
     X = transmitter(message)  # Encode our message
     Y = channel(X)  # Simulate the treatment done by the channel
@@ -101,15 +113,9 @@ def save_transmitted_signal_to_file(message, filename):
     # Transmit the message
     qpsk_signal = transmitter(message)
 
-    # Separate the real and imaginary parts of the QPSK signal
-    signal_parts = [(sample.real, sample.imag) for sample in qpsk_signal]
-
-    # Flatten the list of tuples into a single list
-    flat_signal = [part for sample in signal_parts for part in sample]
-
     # Save the signal to the file
     with open(filename, 'w') as f:
-        for sample in flat_signal:
+        for sample in qpsk_signal:
             f.write(str(sample) + '\n')
 
 
@@ -119,8 +125,8 @@ def receive_message_from_file(filename):
         signal_parts = [float(line.strip()) for line in f]
 
     # Pair up the real and imaginary parts to recreate the complex symbols
-    qpsk_signal = [complex(signal_parts[i], signal_parts[i + 1]) for i in range(0, len(signal_parts), 2)]
-
+    qpsk_signal = [signal_parts for i in range(0, len(signal_parts), 2)]
+    print("[READER] Signal:", qpsk_signal)
     # Pass the symbols to the receiver function
     message = receiver(qpsk_signal)
 
@@ -129,15 +135,14 @@ def receive_message_from_file(filename):
 
 if __name__ == '__main__':
     # message = "Hello World"
-    # message = transmitter(message)
+    # save_transmitted_signal_to_file(message, "input.txt")
     #
     # save_transmitted_signal_to_file(message, "input.txt")
     #
     # receive_message_from_file("output.txt")
 
-
     total_errors = 0
-    for x in range(1):
+    for x in range(100):
         total_errors += example_usage()
         print("")
     print("Total messages error:", total_errors)
