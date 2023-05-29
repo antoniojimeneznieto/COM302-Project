@@ -7,6 +7,7 @@ def transmitter(message):
     # Convert text message to binary representation
     binary_message = ''.join(format(ord(char), '08b') for char in message)
     print("[TRANSMITTER] binary message:", binary_message)
+    print("[TRANSMITTER] binary message size:", len(binary_message))
 
     # Group bits into 4-bit chunks for 16-QAM
     binary_chunks = [binary_message[i:i + 4] for i in range(0, len(binary_message), 4)]
@@ -35,23 +36,29 @@ def receiver(received_signal):
         closest_point = min(distances)
         return symbol_map[list(symbol_map.keys())[distances.index(closest_point)]]
 
-    # We take only the first sublist ?? Why not other ??
+    print("RECEIVED SIGNAL COMPLETE:", received_signal)
+    print("RECEIVED SIGNAL COMPLETE:", len(received_signal))
+
     received_signal = np.array(received_signal)[0]
+    # TODO: I think we have to use the diagonal to simulate the channel in the same way as the server. But if we take
+    #  the diag we do not decode correctly
+    #  received_signal = np.diag(received_signal)
+
     print("[RECEIVER] received signal:", received_signal)
     print("[RECEIVER] received signal size:", len(received_signal))
 
     reshaped_received_signal = received_signal.reshape(-1, 2)
-
+    print("Received signal:", reshaped_received_signal)
     # Apply the inverse of the channel matrix to the received signal
     A_inv = np.linalg.inv(np.array([[11, 10], [10, 11]]))
+    print("A:", A_inv)
     equalized_signal = np.dot(reshaped_received_signal, A_inv)
-    print("[RECEIVER] received signal:", equalized_signal)
 
+    # We flatten the signal and we convert it to a complex sequence
     equalized_signal = equalized_signal.flatten()
-
     qam_signal = [complex(equalized_signal[i], equalized_signal[i + 1]) for i in range(0, len(equalized_signal), 2)]
 
-    print("[RECEIVER] received signal QAM:", qam_signal)
+    print("[RECEIVER] received signal QAM after equalizing:", qam_signal)
 
     # 16-QAM demodulation
     symbol_map = {complex(1, 1): '0000', complex(1, 3): '0001', complex(3, 1): '0010', complex(3, 3): '0011',
@@ -98,6 +105,7 @@ def example_usage():
 
     # Example usage:
     message = generate_random_string(50)
+    message = "Hi"
 
     X = transmitter(message)  # Encode our message
     Y = channel(X)  # Simulate the treatment done by the channel
@@ -140,6 +148,12 @@ if __name__ == '__main__':
     # save_transmitted_signal_to_file(message, "input.txt")
     #
     # receive_message_from_file("output.txt")
+
+    # message = "Hello World!!"
+    # save_transmitted_signal_to_file(message, "input.txt")
+
+    # print(receive_message_from_file("output.txt"))
+
 
     total_errors = 0
     for x in range(100):
