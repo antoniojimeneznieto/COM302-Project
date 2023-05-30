@@ -36,26 +36,17 @@ def receiver(received_signal):
         closest_point = min(distances)
         return symbol_map[list(symbol_map.keys())[distances.index(closest_point)]]
 
-    print("RECEIVED SIGNAL COMPLETE:", received_signal)
-    print("RECEIVED SIGNAL COMPLETE:", len(received_signal))
+    print("[RECEIVER] received signal COMPLETED:", received_signal)
 
     received_signal = np.array(received_signal)[0]
-    # TODO: I think we have to use the diagonal to simulate the channel in the same way as the server. But if we take
-    #  the diag we do not decode correctly
-    #  received_signal = np.diag(received_signal)
-
     print("[RECEIVER] received signal:", received_signal)
     print("[RECEIVER] received signal size:", len(received_signal))
 
-    reshaped_received_signal = received_signal.reshape(-1, 2)
-    print("Received signal:", reshaped_received_signal)
-    # Apply the inverse of the channel matrix to the received signal
-    A_inv = np.linalg.inv(np.array([[11, 10], [10, 11]]))
-    print("A:", A_inv)
-    equalized_signal = np.dot(reshaped_received_signal, A_inv)
+    # Channel estimation and equalization
+    A = np.array([[11, 10], [10, 11]])
+    B = np.kron(np.eye(np.size(received_signal) // 2), A)
+    equalized_signal = np.linalg.inv(B).dot(received_signal)
 
-    # We flatten the signal and we convert it to a complex sequence
-    equalized_signal = equalized_signal.flatten()
     qam_signal = [complex(equalized_signal[i], equalized_signal[i + 1]) for i in range(0, len(equalized_signal), 2)]
 
     print("[RECEIVER] received signal QAM after equalizing:", qam_signal)
@@ -89,8 +80,11 @@ def channel(sent_signal):
     Z = np.random.normal(0, sigma, size=(2 * n, 1))
     A = np.array([[11, 10], [10, 11]])
     B = np.kron(np.eye(n), A)
-    Y = B.dot(x) + Z
-    # print("[CHANNEL noised signal:", Y)
+    print("B:", B)
+    print("B dot x: ", B.dot(x))
+    print("Z:", Z)
+    Y = B.dot(x) + Z.T
+    print("Y:", Y)
     # print("[CHANNEL] noised signal SIZE:", len(Y))
     return Y
 
@@ -156,7 +150,7 @@ if __name__ == '__main__':
 
 
     total_errors = 0
-    for x in range(100):
+    for x in range(1):
         total_errors += example_usage()
         print("")
     print("Total messages error:", total_errors)
