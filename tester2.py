@@ -25,7 +25,8 @@ def transmitter(message):
     # Flatten the list of tuples into a single list
     flat_signal = [part for sample in signal_parts for part in sample]
 
-    print("[TRANSMITTER] QAM signal:", flat_signal)
+    print("[TRANSMITTER] QAM signal :", flat_signal)
+
     return flat_signal
 
 
@@ -35,8 +36,6 @@ def receiver(received_signal):
         distances = [abs(point - constellation_point) for constellation_point in symbol_map.keys()]
         closest_point = min(distances)
         return symbol_map[list(symbol_map.keys())[distances.index(closest_point)]]
-
-    print("[RECEIVER] received signal COMPLETED:", received_signal)
 
     received_signal = np.array(received_signal)[0]
     print("[RECEIVER] received signal:", received_signal)
@@ -74,6 +73,7 @@ def channel(sent_signal):
     n = np.size(sent_signal) // 2
     x = sent_signal[0:2 * n]
     s = sum(x ** 2) / np.size(x)
+    print("S: ", s)
     sigma = 1
     if s > 1:
         sigma = np.sqrt(s)
