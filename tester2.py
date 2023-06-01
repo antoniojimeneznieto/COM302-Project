@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import string
 import random
@@ -13,10 +15,23 @@ def transmitter(message):
     binary_chunks = [binary_message[i:i + 4] for i in range(0, len(binary_message), 4)]
 
     # 16-QAM modulation
-    symbol_map = {'0000': complex(1, 1), '0001': complex(1, 3), '0010': complex(3, 1), '0011': complex(3, 3),
-                  '0100': complex(-1, 1), '0101': complex(-1, 3), '0110': complex(-3, 1), '0111': complex(-3, 3),
-                  '1000': complex(1, -1), '1001': complex(1, -3), '1010': complex(3, -1), '1011': complex(3, -3),
-                  '1100': complex(-1, -1), '1101': complex(-1, -3), '1110': complex(-3, -1), '1111': complex(-3, -3)}
+    d = 0.40
+    symbol_map = {'0000': complex(d, d),
+                  '0001': complex(d, 3 * d),
+                  '0010': complex(3 * d, d),
+                  '0011': complex(3 * d, 3 * d),
+                  '0100': complex(-d, d),
+                  '0101': complex(-d, 3 * d),
+                  '0110': complex(-3 * d, d),
+                  '0111': complex(-3 * d, 3 * d),
+                  '1000': complex(d, -d),
+                  '1001': complex(d, -3 * d),
+                  '1010': complex(3 * d, -d),
+                  '1011': complex(3 * d, -3 * d),
+                  '1100': complex(-d, -d),
+                  '1101': complex(-d, -3 * d),
+                  '1110': complex(-3 * d, -d),
+                  '1111': complex(-3 * d, -3 * d)}
     qam_signal = [symbol_map[chunk] for chunk in binary_chunks]
 
     # Separate the real and imaginary parts of the QAM signal
@@ -25,9 +40,16 @@ def transmitter(message):
     # Flatten the list of tuples into a single list
     flat_signal = [part for sample in signal_parts for part in sample]
 
-    print("[TRANSMITTER] QAM signal :", flat_signal)
 
-    return flat_signal
+
+    # SVD of B
+    A = np.array([[11, 10], [10, 11]])
+    B = np.kron(np.eye(np.size(flat_signal) // 2), A)
+    U, S, V = np.linalg.svd(B, full_matrices=True)
+
+    print("[TRANSMITTER] QAM signal :", V.dot(flat_signal))
+
+    return V.dot(flat_signal)
 
 
 def receiver(received_signal):
@@ -44,17 +66,37 @@ def receiver(received_signal):
     # Channel estimation and equalization
     A = np.array([[11, 10], [10, 11]])
     B = np.kron(np.eye(np.size(received_signal) // 2), A)
-    equalized_signal = np.linalg.inv(B).dot(received_signal)
+
+    #Compute SVD of B
+    U, S, V = np.linalg.svd(B, full_matrices=True)
+
+    print("U:", U)
+    print("S:", S)
+    print("V:", V)
+
+    equalized_signal = received_signal
+
+    print("Eq", equalized_signal)
+
+
+    # 16-QAM demodulation separated by a distance of sqrt(24/15)
+    d = 0.40 * 21
+    symbol_map = {complex(d, d): '0000', complex(d, 3 * d): '0001', complex(3 * d, d): '0010',
+                  complex(3 * d, 3 * d): '0011',
+                  complex(-d, d): '0100', complex(-d, 3 * d): '0101', complex(-3 * d, d): '0110',
+                  complex(-3 * d, 3 * d): '0111',
+                  complex(d, -d): '1000', complex(d, -3 * d): '1001', complex(3 * d, -d): '1010',
+                  complex(3 * d, -3 * d): '1011',
+                  complex(-d, -d): '1100', complex(-d, -3 * d): '1101', complex(-3 * d, -d): '1110',
+                  complex(-3 * d, -3 * d): '1111'}
+
 
     qam_signal = [complex(equalized_signal[i], equalized_signal[i + 1]) for i in range(0, len(equalized_signal), 2)]
 
     print("[RECEIVER] received signal QAM after equalizing:", qam_signal)
 
-    # 16-QAM demodulation
-    symbol_map = {complex(1, 1): '0000', complex(1, 3): '0001', complex(3, 1): '0010', complex(3, 3): '0011',
-                  complex(-1, 1): '0100', complex(-1, 3): '0101', complex(-3, 1): '0110', complex(-3, 3): '0111',
-                  complex(1, -1): '1000', complex(1, -3): '1001', complex(3, -1): '1010', complex(3, -3): '1011',
-                  complex(-1, -1): '1100', complex(-1, -3): '1101', complex(-3, -1): '1110', complex(-3, -3): '1111'}
+
+
 
     demodulated_signal = [find_closest_point(point, symbol_map) for point in qam_signal]
 
@@ -77,6 +119,7 @@ def channel(sent_signal):
     sigma = 1
     if s > 1:
         sigma = np.sqrt(s)
+    print("sigma: ", sigma)
     Z = np.random.normal(0, sigma, size=(2 * n, 1))
     A = np.array([[11, 10], [10, 11]])
     B = np.kron(np.eye(n), A)
@@ -99,7 +142,7 @@ def example_usage():
 
     # Example usage:
     message = generate_random_string(50)
-    message = "Hi"
+    message = "a"
 
     X = transmitter(message)  # Encode our message
     Y = channel(X)  # Simulate the treatment done by the channel
