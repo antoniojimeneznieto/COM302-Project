@@ -7,12 +7,14 @@ import random
 
 def transmitter(message):
     # Convert text message to binary representation
+    # Add 50 X to message
+    message = message + 50 * 'X'
     binary_message = ''.join(format(ord(char), '08b') for char in message)
     print("[TRANSMITTER] binary message:", binary_message)
     print("[TRANSMITTER] binary message size:", len(binary_message))
 
     # Group bits into 4-bit chunks for 16-QAM
-    binary_chunks = [binary_message[i:i + 4] for i in range(0, len(binary_message), 4)]
+    binary_chunks = [binary_message[i:i + 8] for i in range(0, len(binary_message), 8)]
 
     # 16-QAM modulation
     d = 1
@@ -32,6 +34,17 @@ def transmitter(message):
                   '1101': complex(-d, -3 * d),
                   '1110': complex(-3 * d, -d),
                   '1111': complex(-3 * d, -3 * d)}
+
+    # Make a lis of the constellation points for a 256-QAM with distance d between points
+    def generate_symbol_map(d):
+        symbol_map = {}
+        for i in range(16):
+            for j in range(16):
+                symbol_map[format(i, '04b') + format(j, '04b')] = complex((2 * i - 15) * d, (2 * j - 15) * d)
+        return symbol_map
+
+    symbol_map = generate_symbol_map(d)
+
     qam_signal = [symbol_map[chunk] for chunk in binary_chunks]
 
     # Separate the real and imaginary parts of the QAM signal
@@ -73,6 +86,8 @@ def receiver(received_signal):
     #Compute SVD of B
     U, S, V = np.linalg.svd(B, full_matrices=True)
 
+    print("S", S)
+
     # Compute pseudo-inverse of B
     B_inv = np.diag(1 / S) @ U.T
 
@@ -93,6 +108,22 @@ def receiver(received_signal):
                   complex(-d, -d): '1100', complex(-d, -3 * d): '1101', complex(-3 * d, -d): '1110',
                   complex(-3 * d, -3 * d): '1111'}
 
+    def generate_symbol_map(d):
+        symbol_map = {}
+        for i in range(16):
+            for j in range(16):
+                symbol_map[format(i, '04b') + format(j, '04b')] = complex((2 * i - 15) * d, (2 * j - 15) * d)
+        return symbol_map
+
+    def reverse_dict(dictionary):
+        reversed_dict = {value: key for key, value in dictionary.items()}
+        return reversed_dict
+
+    symbol_map = generate_symbol_map(d)
+    symbol_map = reverse_dict(symbol_map)
+
+    print("MAP", symbol_map)
+
 
     qam_signal = [complex(equalized_signal[i], equalized_signal[i + 1]) for i in range(0, len(equalized_signal), 2)]
 
@@ -106,7 +137,8 @@ def receiver(received_signal):
     print("[RECEIVER] binary received signal demodulated:", binary_message)
     text_message = ''.join(chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8))
 
-    return text_message
+    # Return the first 50 characters of the text message
+    return text_message[:50]
 
 
 def channel(sent_signal):
@@ -193,7 +225,7 @@ if __name__ == '__main__':
 
 
     total_errors = 0
-    for x in range(1):
+    for x in range(100):
         total_errors += example_usage()
         print("")
     print("Total messages error:", total_errors)
