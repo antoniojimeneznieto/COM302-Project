@@ -191,9 +191,21 @@ if __name__ == '__main__':
 
     # print(receive_message_from_file("output.txt"))
 
+    def count_consecutive_ones(lst):
+        count = 0
+        for i in range(len(lst) - 1):
+            if lst[i] == 1 and lst[i + 1] == 1:
+                count += 1
+        return count
 
-    total_errors = 0
+    total_errors = []
     for x in range(100):
-        total_errors += example_usage()
+        result = example_usage()
+
+        total_errors.append(int(result))
         print("")
-    print("Total messages error:", total_errors)
+
+    # On 10000 runs, we obtained 753 errors and 59 consecutive errors
+    print("Total messages error:", np.array(total_errors).sum())
+    print("Error messages:", np.array(total_errors))
+    print("Consecutive Errors:", count_consecutive_ones(total_errors))
