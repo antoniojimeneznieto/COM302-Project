@@ -132,15 +132,15 @@ def channel(sent_signal):
     print("Y:", Y)
     return Y
 
+def generate_random_string(length):
+    # All ASCII characters
+    ascii_characters = string.ascii_letters + string.digits + string.punctuation
+    # Generate the random string
+    random_string = ''.join(random.choice(ascii_characters) for _ in range(length))
+    return random_string
+
 
 def example_usage():
-    def generate_random_string(length):
-        # All ASCII characters
-        ascii_characters = string.ascii_letters + string.digits + string.punctuation
-        # Generate the random string
-        random_string = ''.join(random.choice(ascii_characters) for _ in range(length))
-        return random_string
-
     # Example usage:
     message = generate_random_string(50)
 
@@ -179,21 +179,20 @@ def receive_message_from_file(filename):
 
 
 if __name__ == '__main__':
-    # message = "Hello World"
-    # save_transmitted_signal_to_file(message, "input.txt")
-    #
-    # save_transmitted_signal_to_file(message, "input.txt")
-    #
-    # receive_message_from_file("output.txt")
+    message = generate_random_string(50)
+    message = "You can write here :)"
 
-    # message = "Hello World!!"
-    # save_transmitted_signal_to_file(message, "input.txt")
+    save_transmitted_signal_to_file(message, "input.txt")
+    reconstructed_signal = receive_message_from_file("output.txt")
 
-    # print(receive_message_from_file("output.txt"))
+    print("length of message:",len(message))
+    print("Original:", message)
+    print("Reconstructed:", reconstructed_signal)
+    print(message == reconstructed_signal)
 
 
     total_errors = 0
-    for x in range(100):
+    for x in range(0):
         total_errors += example_usage()
         print("")
     print("Total messages error:", total_errors)
