@@ -4,38 +4,25 @@ import numpy as np
 import string
 import random
 
+# Set distance between constellation points
+d = 1
+
+# Message size
+message_size  = 0
 
 def transmitter(message):
-    # Convert text message to binary representation
+    global message_size
+    message_size = len(message)
     # Add 50 X to message
     message = message + 50 * 'X'
+    # Convert text message to binary representation
     binary_message = ''.join(format(ord(char), '08b') for char in message)
     print("[TRANSMITTER] binary message:", binary_message)
     print("[TRANSMITTER] binary message size:", len(binary_message))
 
-    # Group bits into 4-bit chunks for 16-QAM
+    # Group bits into 8-bit chunks for 256-QAM
     binary_chunks = [binary_message[i:i + 8] for i in range(0, len(binary_message), 8)]
 
-    # 16-QAM modulation
-    d = 1
-    symbol_map = {'0000': complex(d, d),
-                  '0001': complex(d, 3 * d),
-                  '0010': complex(3 * d, d),
-                  '0011': complex(3 * d, 3 * d),
-                  '0100': complex(-d, d),
-                  '0101': complex(-d, 3 * d),
-                  '0110': complex(-3 * d, d),
-                  '0111': complex(-3 * d, 3 * d),
-                  '1000': complex(d, -d),
-                  '1001': complex(d, -3 * d),
-                  '1010': complex(3 * d, -d),
-                  '1011': complex(3 * d, -3 * d),
-                  '1100': complex(-d, -d),
-                  '1101': complex(-d, -3 * d),
-                  '1110': complex(-3 * d, -d),
-                  '1111': complex(-3 * d, -3 * d)}
-
-    # Make a lis of the constellation points for a 256-QAM with distance d between points
     def generate_symbol_map(d):
         symbol_map = {}
         for i in range(16):
@@ -79,14 +66,11 @@ def receiver(received_signal):
     print("[RECEIVER] received signal:", received_signal)
     print("[RECEIVER] received signal size:", len(received_signal))
 
-    # Channel estimation and equalization
+    # Compute SVD of B
     A = np.array([[11, 10], [10, 11]])
     B = np.kron(np.eye(np.size(received_signal) // 2), A)
 
-    #Compute SVD of B
     U, S, V = np.linalg.svd(B, full_matrices=True)
-
-    print("S", S)
 
     # Compute pseudo-inverse of B
     B_inv = np.diag(1 / S) @ U.T
@@ -94,19 +78,7 @@ def receiver(received_signal):
     # Apply the pseudo-inverse of B to the received signal
     equalized_signal = B_inv @ received_signal
 
-    print("Eq", equalized_signal)
-
-
-    # 16-QAM demodulation separated by a distance of sqrt(24/15)
-    d = 1
-    symbol_map = {complex(d, d): '0000', complex(d, 3 * d): '0001', complex(3 * d, d): '0010',
-                  complex(3 * d, 3 * d): '0011',
-                  complex(-d, d): '0100', complex(-d, 3 * d): '0101', complex(-3 * d, d): '0110',
-                  complex(-3 * d, 3 * d): '0111',
-                  complex(d, -d): '1000', complex(d, -3 * d): '1001', complex(3 * d, -d): '1010',
-                  complex(3 * d, -3 * d): '1011',
-                  complex(-d, -d): '1100', complex(-d, -3 * d): '1101', complex(-3 * d, -d): '1110',
-                  complex(-3 * d, -3 * d): '1111'}
+    print("[RECEIVER] equalized signal:", equalized_signal)
 
     def generate_symbol_map(d):
         symbol_map = {}
@@ -122,8 +94,6 @@ def receiver(received_signal):
     symbol_map = generate_symbol_map(d)
     symbol_map = reverse_dict(symbol_map)
 
-    print("MAP", symbol_map)
-
 
     qam_signal = [complex(equalized_signal[i], equalized_signal[i + 1]) for i in range(0, len(equalized_signal), 2)]
 
@@ -137,12 +107,11 @@ def receiver(received_signal):
     print("[RECEIVER] binary received signal demodulated:", binary_message)
     text_message = ''.join(chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8))
 
-    # Return the first 50 characters of the text message
-    return text_message[:50]
+    # Return the first message_size characters of the text message (we don't want the added Xs)
+    return text_message[:message_size]
 
 
 def channel(sent_signal):
-    # print("[CHANNEL] sent signal SIZE:", len(sent_signal))
     sent_signal = np.array(sent_signal)
     assert np.size(sent_signal) <= 200, "n must be <= 100"
     n = np.size(sent_signal) // 2
@@ -161,7 +130,6 @@ def channel(sent_signal):
     print("Z:", Z)
     Y = B.dot(x) + Z.T
     print("Y:", Y)
-    # print("[CHANNEL] noised signal SIZE:", len(Y))
     return Y
 
 
@@ -188,11 +156,11 @@ def example_usage():
 
 def save_transmitted_signal_to_file(message, filename):
     # Transmit the message
-    qpsk_signal = transmitter(message)
+    qam_signal = transmitter(message)
 
     # Save the signal to the file
     with open(filename, 'w') as f:
-        for sample in qpsk_signal:
+        for sample in qam_signal:
             f.write(str(sample) + '\n')
 
 
@@ -202,10 +170,10 @@ def receive_message_from_file(filename):
         signal_parts = [float(line.strip()) for line in f]
 
     # Pair up the real and imaginary parts to recreate the complex symbols
-    qpsk_signal = [signal_parts for i in range(0, len(signal_parts), 2)]
-    print("[READER] Signal:", qpsk_signal)
+    qam_signal = [signal_parts for i in range(0, len(signal_parts), 2)]
+    print("[READER] Signal:", qam_signal)
     # Pass the symbols to the receiver function
-    message = receiver(qpsk_signal)
+    message = receiver(qam_signal)
 
     return message
 
