@@ -179,8 +179,9 @@ def receive_message_from_file(filename):
 
 
 if __name__ == '__main__':
-    message = generate_random_string(50)
-    message = "You can write here :)"
+    # message = generate_random_string(50)
+    message = "The quick brown fox jumps over the lazy hen 123456"
+    print(len(message))
 
     save_transmitted_signal_to_file(message, "input.txt")
     reconstructed_signal = receive_message_from_file("output.txt")
