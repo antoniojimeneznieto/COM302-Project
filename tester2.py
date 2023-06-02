@@ -190,21 +190,21 @@ if __name__ == '__main__':
     print("Reconstructed:", reconstructed_signal)
     print(message == reconstructed_signal)
 
-    def count_consecutive_ones(lst):
-        count = 0
-        for i in range(len(lst) - 1):
-            if lst[i] == 1 and lst[i + 1] == 1:
-                count += 1
-        return count
-
-    total_errors = []
-    for x in range(100):
-        result = example_usage()
-
-        total_errors.append(int(result))
-        print("")
-
-    # On 10000 runs, we obtained 753 errors and 59 consecutive errors
-    print("Total messages error:", np.array(total_errors).sum())
-    print("Error messages:", np.array(total_errors))
-    print("Consecutive Errors:", count_consecutive_ones(total_errors))
+    # def count_consecutive_ones(lst):
+    #     count = 0
+    #     for i in range(len(lst) - 1):
+    #         if lst[i] == 1 and lst[i + 1] == 1:
+    #             count += 1
+    #     return count
+    #
+    # total_errors = []
+    # for x in range(100):
+    #     result = example_usage()
+    #
+    #     total_errors.append(int(result))
+    #     print("")
+    #
+    # # On 10000 runs, we obtained 753 errors and 59 consecutive errors
+    # print("Total messages error:", np.array(total_errors).sum())
+    # print("Error messages:", np.array(total_errors))
+    # print("Consecutive Errors:", count_consecutive_ones(total_errors))
